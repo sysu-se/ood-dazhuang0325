@@ -1,6 +1,5 @@
 
-import { Sudoku } from './Sudoku.js';
-export { Game } from '../node_modules/@sudoku/domain/Game.js';
+import { printSudoku, solveSudoku } from '../node_modules/@sudoku/sudoku.js';
 function cloneHint(hint) {
 	if (!hint) return null;
 	return {
