@@ -1,49 +1,137 @@
 <script>
-	import { candidates } from '@sudoku/stores/candidates';
-	import { userGrid } from '@sudoku/stores/grid';
-	import { cursor } from '@sudoku/stores/cursor';
+	import game from '@sudoku/game';
+	import { gameStore } from '@sudoku/stores/gameStore';
 	import { hints } from '@sudoku/stores/hints';
 	import { notes } from '@sudoku/stores/notes';
 	import { settings } from '@sudoku/stores/settings';
 	import { keyboardDisabled } from '@sudoku/stores/keyboard';
+	import { cursor } from '@sudoku/stores/cursor';
+	import { userGrid } from '@sudoku/stores/grid';
 	import { gamePaused } from '@sudoku/stores/game';
 
 	$: hintsAvailable = $hints > 0;
+	$: hasCursor = $cursor.x !== null && $cursor.y !== null;
+	$: cursorEmpty = hasCursor && $userGrid[$cursor.y][$cursor.x] === 0;
 
-	function handleHint() {
-		if (hintsAvailable) {
-			if ($candidates.hasOwnProperty($cursor.x + ',' + $cursor.y)) {
-				candidates.clear($cursor);
-			}
+	function handleUndo() {
+		if ($gamePaused) return;
+		game.undo();
+	}
 
-			userGrid.applyHint($cursor);
+	function handleRedo() {
+		if ($gamePaused) return;
+		game.redo();
+	}
+
+	function handleCandidatesHint() {
+		if ($gamePaused || !hintsAvailable || !hasCursor || !cursorEmpty) return;
+
+		const hint = gameStore.requestCellHint($cursor.y, $cursor.x);
+		if (hint) {
+			hints.useHint();
 		}
+	}
+
+	function handleNextHint() {
+		if ($gamePaused || !hintsAvailable) return;
+
+		const hint = gameStore.requestNextHint();
+		if (hint) {
+			hints.useHint();
+		}
+	}
+
+	function handleEnterExplore() {
+		if ($gamePaused) return;
+		game.enterExplore();
+	}
+
+	function handleCommitExplore() {
+		if ($gamePaused) return;
+		game.commitExplore();
+	}
+
+	function handleAbortExplore() {
+		if ($gamePaused) return;
+		game.abortExplore();
 	}
 </script>
 
 <div class="action-buttons space-x-3">
-
-	<button class="btn btn-round" disabled={$gamePaused} title="Undo">
+	<button
+		class="btn btn-round"
+		disabled={$gamePaused || !$gameStore.canUndo}
+		title="Undo"
+		on:click={handleUndo}
+	>
 		<svg class="icon-outline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
 		</svg>
 	</button>
 
-	<button class="btn btn-round" disabled={$gamePaused} title="Redo">
+	<button
+		class="btn btn-round"
+		disabled={$gamePaused || !$gameStore.canRedo}
+		title="Redo"
+		on:click={handleRedo}
+	>
 		<svg class="icon-outline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10h-10a8 8 90 00-8 8v2M21 10l-6 6m6-6l-6-6" />
 		</svg>
 	</button>
 
-	<button class="btn btn-round btn-badge" disabled={$keyboardDisabled || !hintsAvailable || $userGrid[$cursor.y][$cursor.x] !== 0} on:click={handleHint} title="Hints ({$hints})">
-		<svg class="icon-outline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-		</svg>
-
+	<button
+		class="btn btn-round btn-badge"
+		disabled={$keyboardDisabled || !hintsAvailable || !cursorEmpty}
+		title="Candidates Hint"
+		on:click={handleCandidatesHint}
+	>
+		C
 		{#if $settings.hintsLimited}
 			<span class="badge" class:badge-primary={hintsAvailable}>{$hints}</span>
 		{/if}
 	</button>
+
+	<button
+		class="btn btn-round btn-badge"
+		disabled={$gamePaused || !hintsAvailable}
+		title="Next Hint"
+		on:click={handleNextHint}
+	>
+		H
+		{#if $settings.hintsLimited}
+			<span class="badge" class:badge-primary={hintsAvailable}>{$hints}</span>
+		{/if}
+	</button>
+
+	{#if !$gameStore.exploring}
+		<button
+			class="btn btn-round"
+			disabled={$gamePaused}
+			title="Enter Explore"
+			on:click={handleEnterExplore}
+		>
+			E
+		</button>
+	{:else}
+		<button
+			class="btn btn-round"
+			disabled={$gamePaused || !$gameStore.canCommitExplore}
+			title="Commit Explore"
+			on:click={handleCommitExplore}
+		>
+			OK
+		</button>
+
+		<button
+			class="btn btn-round"
+			disabled={$gamePaused || !$gameStore.canAbortExplore}
+			title="Abort Explore"
+			on:click={handleAbortExplore}
+		>
+			X
+		</button>
+	{/if}
 
 	<button class="btn btn-round btn-badge" on:click={notes.toggle} title="Notes ({$notes ? 'ON' : 'OFF'})">
 		<svg class="icon-outline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -52,9 +140,17 @@
 
 		<span class="badge tracking-tighter" class:badge-primary={$notes}>{$notes ? 'ON' : 'OFF'}</span>
 	</button>
-
 </div>
 
+{#if $gameStore.exploring}
+	<div class="explore-banner" class:explore-failed={$gameStore.exploreFailed}>
+		{#if $gameStore.exploreFailed}
+			Explore failed: current explore path has conflict or matches a known failed state.
+		{:else}
+			Explore mode is active.
+		{/if}
+	</div>
+{/if}
 
 <style>
 	.action-buttons {
@@ -67,11 +163,19 @@
 
 	.badge {
 		min-height: 20px;
-		min-width:  20px;
+		min-width: 20px;
 		@apply p-1 rounded-full leading-none text-center text-xs text-white bg-gray-600 inline-block absolute top-0 left-0;
 	}
 
 	.badge-primary {
 		@apply bg-primary;
+	}
+
+	.explore-banner {
+		@apply mt-3 text-xs text-center text-primary;
+	}
+
+	.explore-failed {
+		@apply text-red-600 font-semibold;
 	}
 </style>
