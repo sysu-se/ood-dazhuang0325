@@ -1,5 +1,5 @@
 
-import { printSudoku, solveSudoku } from '../sudoku.js';
+import { printSudoku, solveSudoku } from '../node_modules/@sudoku/sudoku.js';
 export { Sudoku } from '../node_modules/@sudoku/domain/Sudoku.js';
 function deepCopy(grid) {
 	return grid.map(row => [...row]);
