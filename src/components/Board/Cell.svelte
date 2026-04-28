@@ -1,6 +1,5 @@
 <script>
 	import Candidates from './Candidates.svelte';
-	import { fade } from 'svelte/transition';
 	import { SUDOKU_SIZE } from '@sudoku/constants';
 	import { cursor } from '@sudoku/stores/cursor';
 
@@ -8,6 +7,10 @@
 	export let cellX;
 	export let cellY;
 	export let candidates;
+	export let hintCandidates;
+	export let hintedCell = false;
+	export let exploring = false;
+	export let exploreFailed = false;
 
 	export let disabled;
 	export let conflictingNumber;
@@ -23,21 +26,26 @@
 </script>
 
 <div class="cell row-start-{cellY} col-start-{cellX}"
-     class:border-r={borderRight}
-     class:border-r-4={borderRightBold}
-     class:border-b={borderBottom}
-     class:border-b-4={borderBottomBold}>
+	class:border-r={borderRight}
+	class:border-r-4={borderRightBold}
+	class:border-b={borderBottom}
+	class:border-b-4={borderBottomBold}>
 
 	{#if !disabled}
 		<div class="cell-inner"
-		     class:user-number={userNumber}
-		     class:selected={selected}
-		     class:same-area={sameArea}
-		     class:same-number={sameNumber}
-		     class:conflicting-number={conflictingNumber}>
+			class:user-number={userNumber}
+			class:selected={selected}
+			class:same-area={sameArea}
+			class:same-number={sameNumber}
+			class:conflicting-number={conflictingNumber}
+			class:hinted-cell={hintedCell}
+			class:exploring={exploring}
+			class:explore-failed={exploring && exploreFailed}>
 
-			<button class="cell-btn" on:click={cursor.set(cellX - 1, cellY - 1)}>
-				{#if candidates}
+			<button class="cell-btn" on:click={() => cursor.set(cellX - 1, cellY - 1)}>
+				{#if hintCandidates}
+					<Candidates candidates={hintCandidates} />
+				{:else if candidates}
 					<Candidates {candidates} />
 				{:else}
 					<span class="cell-text">{value || ''}</span>
@@ -118,5 +126,17 @@
 
 	.conflicting-number {
 		@apply text-red-600;
+	}
+
+	.hinted-cell {
+		@apply ring-2 ring-yellow-400;
+	}
+
+	.exploring {
+		@apply bg-blue-50;
+	}
+
+	.explore-failed {
+		@apply bg-red-50;
 	}
 </style>
