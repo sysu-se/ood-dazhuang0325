@@ -5,6 +5,7 @@
 	import { settings } from '@sudoku/stores/settings';
 	import { cursor } from '@sudoku/stores/cursor';
 	import { candidates } from '@sudoku/stores/candidates';
+	import { gameStore } from '@sudoku/stores/gameStore';
 	import Cell from './Cell.svelte';
 
 	function isSelected(cursorStore, x, y) {
@@ -24,8 +25,19 @@
 
 	function getValueAtCursor(gridStore, cursorStore) {
 		if (cursorStore.x === null && cursorStore.y === null) return null;
-
 		return gridStore[cursorStore.y][cursorStore.x];
+	}
+
+	function getHintCandidates(gameStoreState, x, y) {
+		const hint = gameStoreState.currentHint;
+		if (!hint) return null;
+		if (hint.col !== x || hint.row !== y) return null;
+		return hint.candidates ?? null;
+	}
+
+	function isHintedCell(gameStoreState, x, y) {
+		const hint = gameStoreState.currentHint;
+		return !!hint && hint.col === x && hint.row === y;
 	}
 </script>
 
@@ -34,26 +46,31 @@
 		<div class="w-full" style="padding-top: 100%"></div>
 	</div>
 	<div class="board-padding absolute inset-0 flex justify-center">
-
-		<div class="bg-white shadow-2xl rounded-xl overflow-hidden w-full h-full max-w-xl grid" class:bg-gray-200={$gamePaused}>
-
+		<div
+			class="bg-white shadow-2xl rounded-xl overflow-hidden w-full h-full max-w-xl grid"
+			class:bg-gray-200={$gamePaused}
+		>
 			{#each $userGrid as row, y}
 				{#each row as value, x}
-					<Cell {value}
-					      cellY={y + 1}
-					      cellX={x + 1}
-					      candidates={$candidates[x + ',' + y]}
-					      disabled={$gamePaused}
-					      selected={isSelected($cursor, x, y)}
-					      userNumber={$grid[y][x] === 0}
-					      sameArea={$settings.highlightCells && !isSelected($cursor, x, y) && isSameArea($cursor, x, y)}
-					      sameNumber={$settings.highlightSame && value && !isSelected($cursor, x, y) && getValueAtCursor($userGrid, $cursor) === value}
-					      conflictingNumber={$settings.highlightConflicting && $grid[y][x] === 0 && $invalidCells.includes(x + ',' + y)} />
+					<Cell
+						{value}
+						cellY={y + 1}
+						cellX={x + 1}
+						candidates={$candidates[x + ',' + y]}
+						hintCandidates={getHintCandidates($gameStore, x, y)}
+						hintedCell={isHintedCell($gameStore, x, y)}
+						exploring={$gameStore.exploring}
+						exploreFailed={$gameStore.exploreFailed}
+						disabled={$gamePaused}
+						selected={isSelected($cursor, x, y)}
+						userNumber={$grid[y][x] === 0}
+						sameArea={$settings.highlightCells && !isSelected($cursor, x, y) && isSameArea($cursor, x, y)}
+						sameNumber={$settings.highlightSame && value && !isSelected($cursor, x, y) && getValueAtCursor($userGrid, $cursor) === value}
+						conflictingNumber={$settings.highlightConflicting && $grid[y][x] === 0 && $invalidCells.includes(x + ',' + y)}
+					/>
 				{/each}
 			{/each}
-
 		</div>
-
 	</div>
 </div>
 
